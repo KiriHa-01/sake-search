@@ -7,11 +7,7 @@
 # 使い方：
 #   uv run python src/step1_api_experiment.py 山崎
 #   uv run python src/step1_api_experiment.py "プレミアムモルツ 350ml"
-#
-# ★ 自分で書く部分は、楽天と Yahoo! それぞれの params（検索条件の辞書）の2か所だけ。
-#   「TODO（自分で書く）」のマーカーが付いている。書き方はガイド
-#   step1-api-experiment.md の4章参照。詰まったら同ガイド6章の完成版と見比べる。
-#   それ以外の部分（.env 読み込み・ID チェック・保存・表示）は完成コード。
+
 
 import json
 import os
