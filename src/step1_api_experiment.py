@@ -45,15 +45,11 @@ DATA_DIR.mkdir(exist_ok=True)
 r = requests.get(
     "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601",
     params={
-        # ============================================================
-        # TODO（自分で書く）: 楽天に渡す検索条件を、キーと値のペアで書く。
-        #   必要なのは次の5つ。
-        #   - "format": "json"（返り値を JSON 形式で、という指定）
-        #   - "applicationId": os.environ["RAKUTEN_APP_ID"]（.env から読んだ ID）
-        #   - "keyword": keyword（検索キーワード）
-        #   - "hits": 5（取る件数）
-        #   - "sort": "standard"（並び順は標準）
-        # ============================================================
+        "format": "json",                             #（返り値を JSON 形式で、という指定）
+        "applicationId": os.environ["RAKUTEN_APP_ID"],#（.env から読んだ ID）
+        "keyword": keyword,                           #（検索キーワード）
+        "hits": 5,                                    #（取る件数）
+        "sort": "standard"                            #（並び順は標準）
     },
     timeout=30,
 )
@@ -73,14 +69,11 @@ else:
 
 # --- Yahoo! ショッピング 商品検索 API ---
 r = requests.get(
-    "https://shopping.yahooapis.jp/ShoppingWebService/V2/json/itemSearch",
+    "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch",
     params={
-        # ============================================================
-        # TODO（自分で書く）: Yahoo! に渡す検索条件。楽天とキーの名前が違う点に注意。
-        #   - "appid": os.environ["YAHOO_APP_ID"]（ID のキー名は appid）
-        #   - "query": keyword（キーワードのキー名は query）
-        #   - "results": 5（取る件数）
-        # ============================================================
+        "appid": os.environ["YAHOO_APP_ID"],#（ID のキー名は appid）
+        "query": keyword,                   #（キーワードのキー名は query）
+        "results": 5,                       #（取る件数）
     },
     timeout=30,
 )
