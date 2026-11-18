@@ -1,0 +1,9 @@
+[project]
+name = "sake-search"
+version = "0.1.0"
+description = "お酒の価格比較サービス（楽天市場・Yahoo!ショッピングの公式APIで横断比較）"
+requires-python = ">=3.11"
+dependencies = [
+    "requests",
+    "python-dotenv",
+]
