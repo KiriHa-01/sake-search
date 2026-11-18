@@ -1,0 +1,13 @@
+# アプリ ID（パスワードではないが公開しない。.env にだけ書く）
+.env
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+
+# API レスポンスの生 JSON（Step 1 の実験結果。.gitkeep だけ残す）
+data/*.json
+
+# その他
+.DS_Store
