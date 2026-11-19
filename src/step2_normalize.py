@@ -98,7 +98,7 @@ def extract_volume_count(name: str, price: int):
             return None
 
     count_pat = re.compile(r"(\d+(?:\.\d+)?)\s*(?:本|缶|個|パック)", re.IGNORECASE)
-    count_mult_pat = re.compile(r"(\d+(?:\.\d+)?)\s*(?:本|缶|個|パック)\s*[×x]\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+    count_mult_pat = re.compile(r"(\d+(?:\.\d+)?)\s*(?:本|缶|個|パック)(?:パック)?\s*[×x]\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
 
     m = count_mult_pat.search(name)
     if m:
