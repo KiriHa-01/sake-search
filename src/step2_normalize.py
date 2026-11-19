@@ -7,10 +7,10 @@
 # 使い方：
 #   uv run python src/step2_normalize.py
 #
-# ★ extract_volume_count（商品名から容量・本数・単価を取り出す中核）は、
-#   2026-11-19 に本人の依頼で Muse が実装した。考え方はガイド
-#   step2-normalize-prototype.md の2章と、関数内のコメント参照。
-#   それ以外の部分（JSON の読み込み・共通形式への変換・表示・保存）も完成コード。
+# ★ 自分で書く部分は、商品名から容量（ml）と本数を取り出して単価を計算する
+#   extract_volume_count 関数の1か所だけ。「TODO（自分で書く）」のマーカーが
+#   付いている。考え方はガイド step2-normalize-prototype.md の2章参照。
+#   それ以外の部分（JSON の読み込み・共通形式への変換・表示・保存）は完成コード。
 #
 # ※ 片方の JSON がまだ無い場合は、その API をスキップして続行する。
 #   楽天は ID が取れてからでないと out_rakuten.json が作られないため。
@@ -81,84 +81,31 @@ def load_rakuten() -> list:
     return records
 
 
-def _to_ml(number: str, unit: str) -> float:
-    """容量の数字と単位を ml に統一する。L（リットル）は 1000 倍、cc は ml と同じ。"""
-    value = float(number)
-    if unit.lower() in ("l", "リットル"):
-        return value * 1000
-    return value
-
-
 # --- 正規化の中核：商品名から容量・本数を抜き出して単価を出す ---
 def extract_volume_count(name: str, price: int):
     # ============================================================
-    # 商品名から「1本あたりの容量（ml）」と「本数」を取り出し、
-    # 「100ml あたりの単価」まで計算して返す。
-    # 戻り値は (volume_ml, count, price_per_100ml) の3つ組。
-    # 容量が取り出せなければ volume_ml と price_per_100ml は None、
-    # 本数が読み取れなければ count は 1 とする。
+    # TODO（自分で書く）: 商品名から「1本あたりの容量（ml）」と「本数」を
+    #   取り出し、「100ml あたりの単価」まで計算して返す。
+    #   戻り値は (volume_ml, count, price_per_100ml) の3つ組。
+    #   容量が取り出せなければ volume_ml と price_per_100ml は None、
+    #   本数が読み取れなければ count は 1 とする。
     #
-    # やり方の要点：
-    #   1. NFKC で全角の数字・英字を半角に寄せてから正規表現で探す。
-    #   2. 本数は「6缶パック×4」のような掛け算表記を最初に処理し、
-    #      次に「×24本」、最後に「24本」「2本セット」の順で探す。
-    #   3. 容量は単位（ml / L / リットル / cc）付きの数字だけを拾う。
-    #      「山崎12年」の 12 や「43%」の 43 は単位が付かないので混ざらない。
-    #   4. 「計8.4L」「合計8400ml」は総容量として扱い、
-    #      1本あたりは総容量 ÷ 本数で出す。
-    #   5. 単価は price ÷ 総容量(ml) × 100 で「100ml あたり」になる。
+    #   手がかり（ガイド step2-normalize-prototype.md の2章に詳しくある）：
+    #   - まず unicodedata.normalize("NFKC", name) で全角の数字・英字を
+    #     半角に寄せると、正規表現が書きやすくなる。
+    #   - 容量は「数字 + 単位」の形を探す。例：700ml / 1.8L / 500cc。
+    #     L（リットル）は 1000 倍して ml に統一する。cc は ml と同じ。
+    #     正規表現なら r"(\d+(?:\.\d+)?)\s*(ml|リットル|l|cc)" のような形。
+    #   - 本数は「×24本」「350ml×24缶」「6缶パック×4」「2本セット」の
+    #     ような表記から読む。「6缶パック×4」は掛け算で 24 本になる。
+    #   - 罠：「計8.4L」「合計8400ml」は1本の容量ではなく総容量。
+    #     「山崎12年」の 12 は熟成年数、「43%」は度数で、どちらも容量ではない。
+    #     単位（ml / L）が付いた数字だけを拾えば、基本的には混ざらない。
+    #   - 単価は price / (volume_ml × count) × 100 で「100ml あたり」になる。
+    #
+    #   いまは仮の値を返している（このままでも全体は動くが、単価は出ない）。
     # ============================================================
-    s = unicodedata.normalize("NFKC", name).replace(",", "")
-
-    # --- 本数 ---
-    count = 1
-    pack = re.search(r"(\d+)\s*(?:本|缶|個|袋|枚)\s*(?:入り|入|パック)?\s*[×x]\s*(\d+)", s)
-    if pack:
-        # 「6缶パック×4」= 6 × 4 = 24 本
-        count = int(pack.group(1)) * int(pack.group(2))
-    else:
-        m = re.search(r"[×x]\s*(\d+)\s*(?:本|缶|個|袋|枚|パック|セット)?", s)
-        if m:
-            # 「350ml×24本」「×24」など
-            count = int(m.group(1))
-        else:
-            m = re.search(r"(\d+)\s*(?:本|缶|個|袋|枚)(?:入り|入|セット)?", s)
-            if m:
-                # 「24本」「12缶入り」「2本セット」など
-                count = int(m.group(1))
-            else:
-                m = re.search(r"(\d+)\s*(?:パック|セット|ケース)", s)
-                if m:
-                    count = int(m.group(1))
-
-    # --- 容量 ---
-    # まず「計・合計」の総容量表記を探す（1本の容量と取り違えないため）
-    total_ml = None
-    m = re.search(r"(?:計|合計)\s*(\d+(?:\.\d+)?)\s*(ml|リットル|l|cc)", s, re.IGNORECASE)
-    if m:
-        total_ml = _to_ml(m.group(1), m.group(2))
-
-    # 1本あたりの容量（単位付きの数字のうち最初のもの）
-    unit_ml = None
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(ml|リットル|l|cc)", s, re.IGNORECASE)
-    if m:
-        unit_ml = _to_ml(m.group(1), m.group(2))
-
-    if total_ml is not None:
-        volume_ml = total_ml / count
-        total = total_ml
-    elif unit_ml is not None:
-        volume_ml = unit_ml
-        total = unit_ml * count
-    else:
-        return None, count, None
-
-    # 割り切れる場合は int に寄せる（8400 / 24 = 350.0 → 350）
-    if float(volume_ml).is_integer():
-        volume_ml = int(volume_ml)
-
-    price_per_100ml = price / total * 100 if total else None
-    return volume_ml, count, price_per_100ml
+    return None, 1, None
 
 
 def main():
