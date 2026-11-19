@@ -83,6 +83,44 @@ def load_rakuten() -> list:
 
 # --- 正規化の中核：商品名から容量・本数を抜き出して単価を出す ---
 def extract_volume_count(name: str, price: int):
+    name = unicodedata.normalize("NFKC", name)  # 全角数字・英字を半角に寄せる
+    total_pat = re.compile(r"(?:計|合計|総容量|トータル)(\d+(?:\.\d+)?)\s*(ml|リットル|リッター|l|cc)", re.IGNORECASE)
+    volue_pat = re.compile(r"(\d+(?:\.\d+)?)\s*(ml|リットル|リッター|l|cc)", re.IGNORECASE)
+
+    def convert_volume_to_ml(volume_str, unit):
+        volume = float(volume_str)
+        unit = unit.lower()
+        if unit in ["l", "リットル", "リッター"]:
+            return int(volume * 1000)
+        elif unit in ["ml", "cc"]:
+            return int(volume)
+        else:
+            return None
+
+    count_pat = re.compile(r"(\d+(?:\.\d+)?)\s*(?:本|缶|個|パック)", re.IGNORECASE)
+    count_mult_pat = re.compile(r"(\d+(?:\.\d+)?)\s*(?:本|缶|個|パック)\s*[×x]\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+
+    m = count_mult_pat.search(name)
+    if m:
+        count = int(m.group(1)) * int(m.group(2))            # group(1) × group(2)
+    elif count_pat.search(name):
+        m = count_pat.search(name)
+        count = int(m.group(1))                              # group(1) を int に
+    else:
+        count = 1
+
+    # 容量を確定する
+    m = total_pat.search(name)
+    if m:
+        volume_ml = convert_volume_to_ml(m.group(1), m.group(2)) / count     # 変換した総容量 ÷ count
+    elif volue_pat.search(name):
+        m = volue_pat.search(name)
+        volume_ml = convert_volume_to_ml(m.group(1), m.group(2)) # 変換した値そのまま
+    else:
+        return None, count, None
+    price_per_100ml = price / (volume_ml * count) * 100 if volume_ml and count else None
+    return volume_ml, count, price_per_100ml
+
     # ============================================================
     # TODO（自分で書く）: 商品名から「1本あたりの容量（ml）」と「本数」を
     #   取り出し、「100ml あたりの単価」まで計算して返す。
@@ -105,7 +143,6 @@ def extract_volume_count(name: str, price: int):
     #
     #   いまは仮の値を返している（このままでも全体は動くが、単価は出ない）。
     # ============================================================
-    return None, 1, None
 
 
 def main():
