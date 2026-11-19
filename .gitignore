@@ -1,5 +1,6 @@
 # アプリ ID（パスワードではないが公開しない。.env にだけ書く）
 .env
+.streamlit/secrets.toml
 
 # Python / uv
 .venv/
